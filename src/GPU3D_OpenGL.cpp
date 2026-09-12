@@ -133,11 +133,9 @@ std::unique_ptr<GLRenderer> GLRenderer::New() noexcept
     if (!result->BuildRenderShader(RenderFlag_WBuffer, kRenderVS_W, kRenderFS_WO))
         return nullptr;
 
-    if (!result->BuildRenderShader(RenderFlag_Edge, kRenderVS_Z, kRenderFS_ZE))
-        return nullptr;
-
-    if (!result->BuildRenderShader(RenderFlag_Edge | RenderFlag_WBuffer, kRenderVS_W, kRenderFS_WE))
-        return nullptr;
+    // Edge-marking shaders (RenderFlag_Edge) are only used by the edge marking pass, which has been
+    // commented out since the index list it relied on was removed (769d61de). Leave those RenderShader
+    // slots at 0 (memset above); the cleanup loop already skips null entries.
 
     if (!result->BuildRenderShader(RenderFlag_Trans, kRenderVS_Z, kRenderFS_ZT))
         return nullptr;

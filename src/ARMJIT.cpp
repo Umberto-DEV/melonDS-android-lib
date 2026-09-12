@@ -711,7 +711,9 @@ void ARMJIT::CompileBlock(ARM* cpu) noexcept
             {
                 Log(LogLevel::Warn,"literal in non executable memory?\n");
             }
-            if (InvalidLiterals.Find(translatedAddr) == -1)
+            // Skip registering untranslatable literals (translatedAddr == 0): CodeMemRegions[0] is
+            // NULL and would be dereferenced below when patching the region for this address range.
+            if (translatedAddr && InvalidLiterals.Find(translatedAddr) == -1)
             {
                 u32 translatedAddrRounded = translatedAddr & ~0x1FF;
 
