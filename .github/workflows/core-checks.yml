@@ -1,0 +1,35 @@
+name: Core checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Sanitized core build (${{ matrix.runner }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    env:
+      CC: clang
+      CXX: clang++
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Configure core with sanitizers
+        run: >-
+          cmake -S . -B build -G Ninja
+          -DBUILD_QT_SDL=OFF -DENABLE_GDBSTUB=OFF -DENABLE_OGLRENDERER=OFF
+          -DCMAKE_BUILD_TYPE=Debug -DSANITIZE=address,undefined
+      - name: Build core
+        run: cmake --build build --target core --parallel 4
