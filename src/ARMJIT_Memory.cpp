@@ -471,7 +471,7 @@ void ARMJIT_Memory::Mapping::Unmap(int region, melonDS::NDS& nds) noexcept
 
 #ifndef __SWITCH__
     u32 dtcmEnd = dtcmStart + dtcmSize;
-    if (Num == 0
+    if (Num == 0 && region != memregion_DTCM
         && dtcmEnd >= Addr
         && dtcmStart < Addr + Size)
     {
@@ -539,7 +539,7 @@ void ARMJIT_Memory::RemapDTCM(u32 newBase, u32 newSize) noexcept
     // by unmapping DTCM first and then map the holes
     u32 oldDTCMBase = NDS.ARM9.DTCMBase;
     u32 oldDTCMSize = ~NDS.ARM9.DTCMMask + 1;
-    u32 oldDTCMEnd = oldDTCMBase + NDS.ARM9.DTCMMask;
+    u32 oldDTCMEnd = oldDTCMBase + oldDTCMSize;
 
     u32 newEnd = newBase + newSize;
 
@@ -645,6 +645,11 @@ bool ARMJIT_Memory::MapAtAddress(u32 addr) noexcept
     if (!isMapped)
         return false;
 
+    // A sub-page DTCM window cannot be mapped without exposing neighboring RAM.
+    // Let the existing fault handler rewrite this access to the slow path.
+    if (mirrorSize < PageSize)
+        return false;
+
     u8* states = num == 0 ? MappingStatus9 : MappingStatus7;
     //printf("mapping mirror %x, %x %x %d %d\n", mirrorStart, mirrorSize, memoryOffset, region, num);
     bool isExecutable = NDS.JIT.CodeMemRegions[region];
@@ -653,7 +658,7 @@ bool ARMJIT_Memory::MapAtAddress(u32 addr) noexcept
     u32 dtcmSize = ~NDS.ARM9.DTCMMask + 1;
     u32 dtcmEnd = dtcmStart + dtcmSize;
 #ifndef __SWITCH__
-    if (num == 0
+    if (num == 0 && region != memregion_DTCM
         && dtcmEnd >= mirrorStart
         && dtcmStart < mirrorStart + mirrorSize)
     {
@@ -686,7 +691,9 @@ bool ARMJIT_Memory::MapAtAddress(u32 addr) noexcept
     }
 #endif
 
-    AddressRange* range = NDS.JIT.CodeMemRegions[region] + memoryOffset / 512;
+    AddressRange* range = isExecutable
+        ? NDS.JIT.CodeMemRegions[region] + memoryOffset / 512
+        : nullptr;
 
     // this overcomplicated piece of code basically just finds whole pieces of code memory
     // which can be mapped/protected
@@ -1040,8 +1047,11 @@ bool ARMJIT_Memory::GetMirrorLocation(int region, u32 num, u32 addr, u32& memory
     case memregion_DTCM:
         if (num == 0)
         {
-            mirrorStart = addr & ~(DTCMPhysicalSize - 1);
-            mirrorSize = DTCMPhysicalSize;
+            // Smaller configured windows expose only the corresponding physical
+            // slice; larger windows mirror the 16-KiB physical DTCM.
+            mirrorSize = std::min(DTCMPhysicalSize, ~NDS.ARM9.DTCMMask + 1);
+            mirrorStart = addr & ~(mirrorSize - 1);
+            memoryOffset = mirrorStart & (DTCMPhysicalSize - 1);
             return true;
         }
         return false;
