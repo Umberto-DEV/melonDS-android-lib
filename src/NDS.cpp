@@ -133,6 +133,10 @@ NDS::NDS(NDSArgs&& args, int type, void* userdata) noexcept :
 
 NDS::~NDS() noexcept
 {
+    // Fast-memory unmapping reads ARM9's DTCM configuration. Do it while ARM9
+    // is still alive: JIT owns the backing memory and is destroyed after ARM9.
+    JIT.Memory.Reset();
+
     UnregisterEventFuncs(Event_Div);
     UnregisterEventFuncs(Event_Sqrt);
     // The destructor for each component is automatically called by the compiler
