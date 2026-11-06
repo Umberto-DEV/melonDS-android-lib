@@ -1,5 +1,19 @@
 # Building melonDS
 
+## Android target
+
+This Android core is compiled into the app APK through the app's pinned
+submodule and Android NDK configuration. Follow the
+[Android app build instructions](https://github.com/Umberto-DEV/melonDS-android#building),
+initialize submodules recursively and retain the recorded core revision.
+A desktop core build or host sanitizer run is supporting evidence rather than
+Android runtime acceptance; end users do not install a separate core library.
+
+## Upstream desktop reference
+
+The platform instructions below are retained upstream desktop guidance. They
+clone the upstream desktop repository and do not produce the UD Android APK.
+
 * [Linux](#linux)
 * [Windows](#windows)
 * [macOS](#macos)
